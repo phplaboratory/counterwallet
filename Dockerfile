@@ -5,6 +5,7 @@ MAINTAINER Counterparty Developers <dev@counterparty.io>
 # install additional deps
 RUN apt-get update && apt-get -y install ssl-cert make libpcre3-dev libxslt1-dev libgd2-xpm-dev libgeoip-dev unzip zip build-essential libssl-dev libxslt1.1 libgeoip1 geoip-database libpcre3
 
+
 # install nginx
 ENV OPENRESTY_VER="1.9.7.4"
 RUN wget -O /tmp/nginx-openresty.tar.gz http://openresty.org/download/openresty-${OPENRESTY_VER}.tar.gz
