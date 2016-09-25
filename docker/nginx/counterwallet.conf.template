@@ -2,8 +2,9 @@ upstream cache_server {
   server ${REDIS_HOST}:${REDIS_PORT};
   keepalive 128;
 }
-upstream counterblock_api_server {
-  server ${COUNTERBLOCK_HOST_MAINNET}:${COUNTERBLOCK_PORT_MAINNET};
+
+upstream counterblock_t_api_server {
+  server ${COUNTERBLOCK_HOST_TESTNET}:${COUNTERBLOCK_PORT_TESTNET};
   keepalive 30;
 }
 
@@ -67,12 +68,12 @@ server {
   open_file_cache_min_uses 2;
   open_file_cache_errors on;    
     
-  location /_asset_img/ {
+  
+  location /_t_asset_img/  {
     access_log off;
     expires 1h;
-    alias /counterblock_data/asset_img;
+    alias /counterblock_data/asset_img.testnet/;
   }
-  
   location /src  {
     #For dev/testing (uses unminified resources)
     open_file_cache off;
@@ -92,10 +93,12 @@ server {
   }
   #############
 
+ 
+  
   #####
-  # PRODUCTION
-  # PROXY TO COUNTERWALLETD API REQUESTS (WSGI) - try to hit the cache in redis first
-  location ^~ /_api
+  # TESTNET  
+  # PROXY TO COUNTERBLOCK API REQUESTS (WSGI) - try to hit the cache in redis first
+  location ^~ /_t_api
   {
     #reject everything except GET, POST and OPTIONS
     limit_except GET POST OPTIONS {
@@ -103,25 +106,31 @@ server {
     }
 
     include /etc/nginx/sites-enabled/counterblock_api_cache.inc;
-    set $redis_db "${REDIS_DB}";
+    set $redis_db "1";
 
     # Send to app server if Redis could not answer the request
-    error_page 404 405 550 = @wsgi_api;
+    error_page 404 405 550 = @t_wsgi_api;
   }
   # PROXY TO COUNTERBLOCK API BACKEND (WSGI)
-  location @wsgi_api {
+  location @t_wsgi_api {
     include /etc/nginx/sites-enabled/counterblock_api.inc;
-    rewrite ^/_api/?$ /api/?  break;    
-    proxy_pass   http://counterblock_api_server;
+    rewrite ^/_t_api/?$ /api/?  break;
+    proxy_pass   http://counterblock_t_api_server;
   }
   # PROXY TO COUNTERBLOCK FEED BACKEND (socket.io)
-  location ^~ /_feed {
+  location ^~ /_t_feed {
     include /etc/nginx/sites-enabled/counterblock_socketio.inc;
-    proxy_pass   http://${COUNTERBLOCK_HOST_MAINNET}:${COUNTERBLOCK_PORT_MAINNET_FEED}/socket.io;
+    proxy_pass   http://${COUNTERBLOCK_HOST_TESTNET}:${COUNTERBLOCK_PORT_TESTNET_FEED}/socket.io;
   }
   # PROXY TO COUNTERBLOCK CHAT BACKEND (socket.io)
-  location ^~ /_chat {
+  location ^~ /_t_chat {
     include /etc/nginx/sites-enabled/counterblock_socketio.inc;
-    proxy_pass   http://${COUNTERBLOCK_HOST_MAINNET}:${COUNTERBLOCK_PORT_MAINNET_CHAT}/socket.io;
+    proxy_pass   http://${COUNTERBLOCK_HOST_TESTNET}:${COUNTERBLOCK_PORT_TESTNET_CHAT}/socket.io;
+  }
+  
+  #####
+  # CSP REPORTING (mainnet and testnet)
+  location ^~ /_report_csp/ {
+    proxy_pass   http://counterblock_t_api_server;
   }
 }
